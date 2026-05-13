@@ -1,0 +1,22 @@
+# Entornos virtuales
+venv/
+venv_glitch/
+env/
+.env
+
+# Caché compilada de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs y SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Pesos de modelos y cachés de descargas locales (Evita subir GBs de basura)
+*.pth
+*.pt
+.cache/
+hub/
