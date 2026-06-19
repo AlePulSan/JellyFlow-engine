@@ -1,49 +1,63 @@
-# Kinematic Engine | Real-Time Optical Fluid Dynamics
+# Kinematic Engine
 
-Kinematic Engine es un motor de visión computacional y renderizado híbrido que simula físicas de fluidos ópticos y refracción en tiempo real. 
+A hybrid computer vision engine built to simulate optical fluid physics and real-time refraction. 
 
-El sistema optimiza el flujo de datos mediante un pipeline que combina **Computer Vision tradicional (OpenCV)** para la ingesta y pre-procesamiento, con **cálculo tensorial masivo en GPU (PyTorch CUDA)** para la simulación física y el remapeo óptico.
+The core design goal was to avoid CPU bottlenecks. To achieve high frame rates with concurrent inference models running, the pipeline strictly decouples OpenCV's CPU processing from the heavy tensor math handled by the GPU (PyTorch/CUDA).
 
-![Kinematic Engine Demo](./assets/demo.gif)
+![System Demo](./assets/JellyFlow.gif)
 
-## 🚀 Arquitectura Técnica
+## Technical Architecture
 
-El motor implementa una arquitectura desacoplada para maximizar los FPS (Frames Per Second) incluso bajo cargas pesadas de inferencia:
+I built the pipeline around an asynchronous data flow to minimize ingestion and processing latency:
 
-1.  **Threaded Ingestion:** La captura de vídeo se ejecuta en un hilo asíncrono para eliminar la latencia de red (especialmente útil al usar webcams inalámbricas/móviles).
-2.  **Dense Optical Flow (CPU):** Se utiliza el algoritmo de Farneback optimizado geométricamente a resolución reducida ($0.5x$) para extraer vectores de inercia sin saturar el procesador.
-3.  **Inference Hot-Swapping:**
-    * **2D Mode:** Segmentación semántica (Selfie/FaceMesh) para aislamiento de masas.
-    * **3D Mode (MiDaS):** Estimación de profundidad monocular. Implementa una función de activación exponencial ($Z^{3.5}$) para simular colisiones físicas frontales e inercia volumétrica.
-4.  **Tensor Graphics (GPU):** Los datos se inyectan en el bus PCIe hacia la VRAM. PyTorch gestiona la memoria térmica (viscosidad) y ejecuta un `F.grid_sample` bilineal para la deformación de la matriz de vídeo por hardware.
+* **Async Ingestion (Anti-Lag):** Video capture runs on a dedicated background thread. This absorbs network latency when pulling feeds from IP cameras or wireless mobile devices, keeping the main render loop completely unblocked.
+* **Vector Field (Optical Flow):** Uses Farnebäck's algorithm to extract inertia vectors. I run this at half resolution (0.5x) to save CPU cycles before offloading the interpolation to the GPU.
+* **Hot-Swappable Inference:**
+    * **2D Mode (Semantic):** Uses MediaPipe for body and face segmentation to isolate the kinetic masses.
+    * **3D Mode (Depth):** Monocular depth estimation via MiDaS. I implemented a custom activation threshold and an exponential scale (Z^3.5) to simulate frontal physical collisions based on target proximity.
+* **GPU Tensor Math:** Flow vectors and inference masks are pushed directly to VRAM. PyTorch handles the "thermal" memory (viscosity) and runs a bilinear sampling function (`F.grid_sample`) to geometrically warp the frame buffer straight from the hardware.
 
-## 🛠️ Solución de Desafíos de Ingeniería
+## Memory Management & Performance
 
-* **Memory Contiguity:** Se resolvió la incompatibilidad de punteros entre tensores de PyTorch y matrices de OpenCV mediante la reestructuración de la RAM con `np.ascontiguousarray`, evitando errores de layout en el Frame Buffer de C++.
-* **Blackwell Architecture Support:** Configuración de compatibilidad para GPUs NVIDIA Serie 5000 (Compute Capability `sm_120`) mediante el uso de *Nightly Builds* y controladores CUDA 12.x.
+* **Memory Contiguity:** Passing pointers back and forth between PyTorch tensors and OpenCV arrays usually breaks memory layouts. The engine fixes this RAM layout on the fly using `np.ascontiguousarray`, guaranteeing data integrity when pulling frames back from GPU space.
+* **Hardware Tuning:** Compiled and optimized specifically for high-performance NVIDIA architectures running the latest CUDA builds.
 
-## 📦 Instalación
+## Installation
 
-1.  **Clonar el repositorio:**
-    ```bash
-    git clone https://github.com/TuUsuario/kinematic-engine.git
-    cd kinematic-engine
-    ```
+1. **Clone the repository:**
+```bash
+git clone [https://github.com/AlePulSan/kinematic-engine.git](https://github.com/AlePulSan/kinematic-engine.git)
+cd kinematic-engine
+```
 
-2.  **Instalar dependencias base:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. **Install base dependencies:**
+```bash
+pip install -r requirements.txt
+```
 
-3.  **Instalar PyTorch (Versión recomendada para GPU):**
-    ```bash
-    pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
-    ```
+3. **Install PyTorch with CUDA support:**
+```bash
+pip install --pre torch torchvision --index-url [https://download.pytorch.org/whl/nightly/cu128](https://download.pytorch.org/whl/nightly/cu128)
+```
 
-4.  **Ejecutar:**
-    ```bash
-    python src/kinematic_engine.py
-    ```
+## Usage
 
-## 📝 Licencia
-Este proyecto se distribuye bajo la licencia MIT.
+To run the engine with the default configuration:
+
+```bash
+python src/kinematic_engine.py
+```
+
+## Input Source Configuration
+
+The system automatically detects the available camera, but it can be configured to process local video files. Modify the constant in `src/kinematic_engine.py`:
+
+```python
+# For live camera:
+VIDEO_SOURCE = 0
+
+# To process a pre-recorded file:
+VIDEO_SOURCE = "path/to/video.mp4"
+```
+
+The engine standardizes the input resolution to 720p and handles the playback loop automatically.
