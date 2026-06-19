@@ -1,4 +1,4 @@
-# Kinematic Engine
+# JellyFlow Engine
 
 A hybrid computer vision engine built to simulate optical fluid physics and real-time refraction. 
 
@@ -26,8 +26,8 @@ I built the pipeline around an asynchronous data flow to minimize ingestion and 
 
 1. **Clone the repository:**
 ```bash
-git clone [https://github.com/AlePulSan/kinematic-engine.git](https://github.com/AlePulSan/kinematic-engine.git)
-cd kinematic-engine
+git clone [https://github.com/AlePulSan/JellyFlow-engine.git](https://github.com/AlePulSan/JellyFlow-engine.git)
+cd JellyFlow-engine
 ```
 
 2. **Install base dependencies:**
@@ -45,12 +45,12 @@ pip install --pre torch torchvision --index-url [https://download.pytorch.org/wh
 To run the engine with the default configuration:
 
 ```bash
-python src/kinematic_engine.py
+python src/JellyFlow_engine.py
 ```
 
 ## Input Source Configuration
 
-The system automatically detects the available camera, but it can be configured to process local video files. Modify the constant in `src/kinematic_engine.py`:
+The system automatically detects the available camera, but it can be configured to process local video files. Modify the constant in `src/JellyFlow_engine.py`:
 
 ```python
 # For live camera:
