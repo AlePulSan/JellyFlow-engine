@@ -14,7 +14,7 @@ warnings.filterwarnings("ignore")
 # 1. INGESTA: PRODUCTOR-CONSUMIDOR (ANTI-LAG & ANTI-DROP)
 class ThreadedCamera:
     """
-    Diferencia entre Webcam (modo de baja latencia con frame overwrite) y video local (modo Productor-Consumidor con Queue para no perder frames)
+    Diferencia entre Webcam (baja latencia) y video local (modo Productor-Consumidor con Queue para no perder frames)
     """
     def __init__(self, src=0, width=1280, height=720, queue_size=256):
         self.cap = cv2.VideoCapture(src)
