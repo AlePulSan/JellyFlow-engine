@@ -53,7 +53,7 @@ class ThreadedCamera:
                 else:
                     time.sleep(0.005) # Liberar CPU si el disco es más rápido que el modelo
             else:
-                # MODO WEBCAM: Sobreescribir con el frame más reciente (baja latencia)
+                # MODO WEBCAM: Sobreescribir con el frame más reciente para reducir la latencia
                 self.ret, self.frame = self.cap.read()
                 time.sleep(0.001)
 
