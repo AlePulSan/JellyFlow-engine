@@ -63,7 +63,7 @@ VIDEO_SOURCE = "path/to/video.mp4"
 The engine standardizes the input resolution to 720p and handles the playback loop automatically.
 
 
-## R&D Sandbox (Proof of Concepts)
+## Sandbox (Proof of Concepts)
 
 To keep the core engine stable and modular, individual subsystems are isolated, stress-tested, and validated in the `pocs/` directory. This acts as a testing and learning playground before integrating code into the main pipeline:
 
