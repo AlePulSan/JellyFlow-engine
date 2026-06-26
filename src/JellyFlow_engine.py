@@ -11,7 +11,7 @@ from queue import Queue
 
 warnings.filterwarnings("ignore")
 
-# 1. INGESTA: PRODUCTOR-CONSUMIDOR (ANTI-LAG & ANTI-DROP)
+#Patrón productor-consumidor
 class ThreadedCamera:
     """
     Diferencia entre Webcam (baja latencia) y video local (modo Productor-Consumidor con Queue para no perder frames)
@@ -43,7 +43,7 @@ class ThreadedCamera:
                 break
                 
             if self.is_file:
-                # MODO ARCHIVO: Llenar la cola sin sobreescribir ni saltar frames
+                # si es un archivo: Llenar la cola sin sobreescribir ni saltar frames
                 if not self.Q.full():
                     ret, frame = self.cap.read()
                     if not ret:
@@ -53,7 +53,7 @@ class ThreadedCamera:
                 else:
                     time.sleep(0.005) # Liberar CPU si el disco es más rápido que el modelo
             else:
-                # MODO WEBCAM: Sobreescribir con el frame más reciente para reducir la latencia
+                # camara streaming: Sobreescribir con el frame más reciente para reducir la latencia
                 self.ret, self.frame = self.cap.read()
                 time.sleep(0.001)
 
@@ -73,7 +73,7 @@ class ThreadedCamera:
         self.cap.release()
 
 
-# 2. CONFIGURACIÓN GLOBAL
+# config
 VIDEO_SOURCE = "C:/Users/Usuario/Downloads/Mobile Devices/Video1.mp4" 
 W_CAM, H_CAM = 1280, 720
 UI_WIDTH = 300
@@ -97,7 +97,7 @@ def mouse_callback(event, x, y, flags, param):
             elif BTN_Y_PROF[0] <= y <= BTN_Y_PROF[1]: CURRENT_MODE = "PROFUNDIDAD"
 
 
-# 3. INTERFAZ
+# Interfaz sewncilla hecha con gemini
 def draw_hud(frame, fps, backend_str):
     overlay = frame.copy()
     cv2.rectangle(overlay, (W_CAM - UI_WIDTH, 0), (W_CAM, H_CAM), (10, 10, 12), -1)
@@ -170,14 +170,12 @@ def main():
             prev_gray = curr_gray
             flow_t = torch.from_numpy(flow).to(device)
 
-            # 2. Selección de Máscaracon optimización de Bus PCIe
             if CURRENT_MODE == "PROFUNDIDAD":
                 img_batch = midas_transforms(frame_rgb).to(device)
                 with torch.no_grad():
                     pred = midas(img_batch)
                     pred = F.interpolate(pred.unsqueeze(1), size=(H_CAM, W_CAM), mode="bicubic").squeeze()
-                
-                # Operaciones confinadas en GPU
+                # Operaciones de GPU
                 d_min, d_max = pred.min(), pred.max()
                 norm_d = (pred - d_min) / (d_max - d_min + 1e-6)
                 mask_t = torch.where(norm_d > Z_THRESHOLD, norm_d, torch.zeros_like(norm_d)) ** Z_EXP
@@ -191,13 +189,13 @@ def main():
                 elif CURRENT_MODE == "CARAS":
                     res = mp_face_mesh.process(frame_rgb)
                     if res.multi_face_landmarks:
-                        # Forzamos dtype=np.int32 para evitar colapsos en C++ (OpenCV)
+                        # Forzamos dtype=np.int32
                         pts = np.array([(int(l.x*W_CAM), int(l.y*H_CAM)) for l in res.multi_face_landmarks[0].landmark], dtype=np.int32)
                         cv2.fillConvexPoly(mask, cv2.convexHull(pts), 1.0)
                 
                 mask_t = torch.from_numpy(mask).to(device).unsqueeze(-1)
 
-            # 3. GPU Pipeline (PyTorch)
+            # GPU Pipeline con Pythorch
             frame_t = torch.from_numpy(frame).to(device).float().permute(2,0,1).unsqueeze(0) / 255.0
             
             flow_t[..., 0] /= (W_CAM / 2.0)
@@ -205,7 +203,7 @@ def main():
             
             flow_accumulator = (flow_accumulator + (flow_t * mask_t * 4.0).unsqueeze(0)) * 0.92
             
-            # Prevención de denormales (fuga silenciosa de rendimiento en GPU)
+            # Prevención de fuga silenciosa de rendimiento de la GPU
             flow_accumulator[flow_accumulator.abs() < 1e-4] = 0.0
             
             # Difusión y Remapeo
